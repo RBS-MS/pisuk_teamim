@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>לומדת הטעמים - משרתים וזרימה חדשה</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9; 
+            margin: 0; 
+            padding: 20px; 
+            text-align: right; 
+            color: #333;
+            user-select: none;
+        }
+
+        /* --- מסך פתיחה --- */
+        #startScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98);
+            z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+
+        .input-card {
+            background: white; padding: 40px; border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); width: 70%; max-width: 700px; border: 1px solid #eee; text-align: center;
+        }
+
+        textarea#verseInput {
+            width: 100%; height: 120px; padding: 20px; font-size: 24px;
+            font-family: 'SBL Hebrew', 'Ezra SIL', 'David', sans-serif;
+            border: 2px solid #e0e0e0; border-radius: 12px; margin-bottom: 25px; resize: vertical; outline: none;
+        }
+        
+        button.primary-btn {
+            background-color: #2c3e50; color: white; border: none; padding: 15px 40px;
+            font-size: 20px; border-radius: 50px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(44, 62, 80, 0.3); transition: transform 0.2s;
+        }
+        button.primary-btn:hover { transform: translateY(-2px); background-color: #34495e; }
+
+        /* --- סרגל עליון --- */
+        .header-bar {
+            background: white; padding: 15px 30px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 40px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: sticky; top: 10px; z-index: 100; border: 1px solid #fff; min-height: 80px;
+        }
+
+        #instructionText { font-size: 26px; font-weight: 700; color: #2c3e50; margin-bottom: 15px; text-align: center; }
+        
+        /* פאנל כפתורי תשובה בתוך ההדר */
+        #controlPanel {
+            display: flex; gap: 20px; justify-content: center; width: 100%;
+        }
+        
+        .action-btn {
+            padding: 10px 30px; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; border: none;
+            transition: all 0.2s; min-width: 120px;
+        }
+        .btn-yes { background-color: #27ae60; color: white; }
+        .btn-yes:hover { background-color: #219150; transform: scale(1.05); }
+        
+        .btn-no { background-color: #e74c3c; color: white; }
+        .btn-no:hover { background-color: #c0392b; transform: scale(1.05); }
+
+        .hidden { display: none !important; }
+
+        button.reset-btn { 
+            position: absolute; left: 20px; top: 20px;
+            background: #ecf0f1; color: #7f8c8d; border: 1px solid #bdc3c7; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;
+        }
+
+        /* --- אזור העבודה --- */
+        #workspace {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 150px;
+            direction: rtl;
+        }
+
+        /* --- קופסאות ומבנה --- */
+        .split-container {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            margin: 0 4px;
+        }
+
+        .box {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            border-radius: 8px;
+            transition: all 0.4s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            margin-left: 12px;
+            margin-bottom: 4px;
+        }
+
+        .level-4 { border: 3px solid #c0392b; background: #fff5f5; padding: 55px 15px 10px 15px; }
+        .level-3 { border: 2px solid #e67e22; background: #fff8f0; padding: 42px 12px 10px 12px; }
+        .level-2 { border: 2px solid #2980b9; background: #f0f9ff; padding: 30px 10px 8px 10px; }
+        .level-1 { border: 1px solid #8e44ad; background: #fbf5ff; padding: 20px 8px 6px 8px; }
+
+        .label-tag {
+            position: absolute; top: -14px; right: 15px; 
+            background: white; padding: 2px 12px; border-radius: 12px;
+            font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        .level-4 .label-tag { color: #c0392b; border: 1px solid #c0392b; }
+        .level-3 .label-tag { color: #d35400; border: 1px solid #e67e22; }
+        .level-2 .label-tag { color: #2980b9; border: 1px solid #3498db; }
+        .level-1 .label-tag { color: #8e44ad; border: 1px solid #9b59b6; }
+
+        .neutral-container { display: flex; align-items: flex-end; padding: 5px; }
+
+        /* --- מילים --- */
+        .word-atom {
+            font-size: 38px;
+            font-family: 'SBL Hebrew', 'Ezra SIL', 'David', sans-serif;
+            cursor: default;
+            padding: 4px 6px;
+            line-height: 1.2;
+            color: #444;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .revealed-accent { color: #d35400; font-weight: normal; }
+        .revealed-servant { color: #27ae60; font-weight: normal; } /* צבע ירוק למשרתים */
+
+        .active-zone {
+            background-color: #fffde7;
+            border: 2px dashed #f1c40f;
+            border-radius: 10px;
+            padding: 5px;
+            margin: 2px;
+            display: inline-flex;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.4);
+        }
+        
+        .clickable-word { cursor: pointer; }
+        .clickable-word:hover { background-color: rgba(0,0,0,0.05); color: #000; }
+        
+        .already-solved { opacity: 0.6; cursor: default; }
+
+        /* --- מודל --- */
+        #modalOverlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:2999; backdrop-filter: blur(2px); }
+        #questionModal {
+            display: none; position: fixed; top: 45%; left: 50%; transform: translate(-50%, -45%);
+            background: white; padding: 35px; border-radius: 20px; width: 550px;
+            z-index: 3000; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); border: 1px solid #eee;
+        }
+        
+        .modal-step { display: none; animation: fadeIn 0.3s ease; }
+        .modal-step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .option-btn {
+            display: block; width: 100%; padding: 12px 16px; margin: 10px 0;
+            border: 2px solid #eef2f7; background: #fff; cursor: pointer; border-radius: 10px;
+            font-size: 18px; font-weight: 500; transition: all 0.2s; color: #444; text-align: right;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .option-btn:hover { background-color: #f7f9fc; border-color: #3498db; color: #2980b9; transform: scale(1.01); }
+        
+        .accent-desc { font-size: 14px; color: #7f8c8d; font-weight: normal; margin-right: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="startScreen">
+        <div class="input-card">
+            <h1>מעבדת הטעמים</h1>
+            <p>הדבק כאן את הפסוק:</p>
+            <textarea id="verseInput">וַיֵּצֵא מֹשֶׁה לִקְרַאת חֹתְנוֹ וַיִּשְׁתַּחוּ וַיִּשַּׁק־לוֹ</textarea>
+            <button class="primary-btn" onclick="initGame()">טען והתחל</button>
+        </div>
+    </div>
+
+    <div class="header-bar">
+        <button class="reset-btn" onclick="location.reload()">פסוק חדש</button>
+        <div id="instructionText">ממתין לטעינה...</div>
+        
+        <div id="controlPanel" class="hidden">
+            <button class="action-btn btn-yes" onclick="handleHeaderAnswer(true)">כן, לחלק</button>
+            <button class="action-btn btn-no" onclick="handleHeaderAnswer(false)">לא צריך</button>
+        </div>
+    </div>
+
+    <div id="workspace"></div>
+
+    <div id="modalOverlay"></div>
+    <div id="questionModal">
+        <div id="stepAccent" class="modal-step active">
+            <h3 id="accentTitle">בחר את הטעם:</h3>
+            <div id="accentOptions"></div>
+        </div>
+        <button onclick="closeModal()" style="margin-top:20px; border:none; background:none; color:#95a5a6; cursor:pointer;">ביטול</button>
+    </div>
+
+    <script>
+        // --- מאגר טעמים (מפסיקים ומשרתים) ---
+        const ACCENTS = {
+            // רמה 4 - קיסרים
+            '\u0591': { level: 4, type: 'stop', name: "אתנחתא", class: "level-4", char: '\u0591', desc: "מחצית הפסוק" },
+            '\u05C3': { level: 4, type: 'stop', name: "סוף פסוק", class: "level-4", char: '\u05C3', desc: "סוף הפסוק" },
+            ':':      { level: 4, type: 'stop', name: "סוף פסוק", class: "level-4", char: ':', desc: "סוף הפסוק" },
+            
+            // רמה 3 - מלכים
+            '\u0596': { level: 3, type: 'stop', name: "טיפחא", class: "level-3", char: '\u0596', desc: "לפני סוף פסוק או אתנחתא" },
+            '\u0594': { level: 3, type: 'stop', name: "זקף קטן", class: "level-3", char: '\u0594', desc: "מלך נפוץ" },
+            '\u0595': { level: 3, type: 'stop', name: "זקף גדול", class: "level-3", char: '\u0595', desc: "מחליף זקף קטן" },
+            '\u0592': { level: 3, type: 'stop', name: "סגול", class: "level-3", char: '\u0592', desc: "בראש פסוק" },
+            
+            // רמה 2 - משנים
+            '\u0597': { level: 2, type: 'stop', name: "רביע", class: "level-2", char: '\u0597', desc: "מעל המילה" },
+            '\u0599': { level: 2, type: 'stop', name: "פשטא", class: "level-2", char: '\u0599', desc: "בסוף המילה (לפעמים פעמיים)" },
+            '\u059B': { level: 2, type: 'stop', name: "תביר", class: "level-2", char: '\u059B', desc: "לפני המלך" },
+            '\u0598': { level: 2, type: 'stop', name: "זרקא", class: "level-2", char: '\u0598', desc: "מצטרף לסגול" },
+            '\u059A': { level: 2, type: 'stop', name: "יתיב", class: "level-2", char: '\u059A', desc: "לפני המלך (בראש המילה)" },
+            
+            // רמה 1 - שלישים
+            '\u059C': { level: 1, type: 'stop', name: "גרש", class: "level-1", char: '\u059C', desc: "שליש" },
+            '\u059E': { level: 1, type: 'stop', name: "גרשיים", class: "level-1", char: '\u059E', desc: "שליש כפול" },
+            '\u05A0': { level: 1, type: 'stop', name: "תלישא גדולה", class: "level-1", char: '\u05A0', desc: "בראש המילה" },
+            '\u0588': { level: 1, type: 'stop', name: "פזר", class: "level-1", char: '\u0588', desc: "שליש מאריך" },
+
+            // משרתים (ללא רמה היררכית לחלוקה, אלא לזיהוי בסוף)
+            '\u05A3': { level: 0, type: 'servant', name: "מונח", char: '\u05A3', desc: "משרת נפוץ" },
+            '\u05A5': { level: 0, type: 'servant', name: "מרכא", char: '\u05A5', desc: "משרת" },
+            '\u05A4': { level: 0, type: 'servant', name: "מהפך", char: '\u05A4', desc: "מתחת למילה (כמו וי קטן)" },
+            '\u05A8': { level: 0, type: 'servant', name: "קדמא", char: '\u05A8', desc: "משרת (הולך לפני גרש בד\"כ)" },
+            '\u05A7': { level: 0, type: 'servant', name: "דרגא", char: '\u05A7', desc: "מסלסל" },
+            '\u05A9': { level: 0, type: 'servant', name: "תלישא קטנה", char: '\u05A9', desc: "משרת" },
+            '\u05AA': { level: 0, type: 'servant', name: "ירח בן יומו", char: '\u05AA', desc: "דומה לפרסה" }
+        };
+        
+        const RANK_TITLES = { 
+            4: "קיסר", 
+            3: "מלך", 
+            2: "משנה", 
+            1: "שליש" 
+        };
+
+        // --- ניהול מצבים ---
+        const STATE_ASK_SPLIT = 'ASK_SPLIT';         // המערכת שואלת: האם לחלק?
+        const STATE_SELECT_SPLIT = 'SELECT_SPLIT';   // המשתמש צריך לבחור מילה מפסיקה
+        const STATE_ID_SERVANTS = 'ID_SERVANTS';     // המשתמש מזהה משרתים כי אין חלוקה
+        
+        let currentState = STATE_ASK_SPLIT;
+
+        let rootNode = null;
+        let activeNode = null; 
+        let globalWordsData = []; 
+        let pendingWordInfo = null; // מידע על המילה שנלחצה כרגע
+
+        class VerseNode {
+            constructor(wordsIndices, searchLevel) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.wordsIndices = wordsIndices; 
+                this.children = [];
+                this.isSolved = false;     // האם הפכנו אותו לקופסה
+                this.isFinalized = false;  // האם סיימנו איתו לגמרי (כולל משרתים אם יש)
+                this.delimiter = null;
+                this.assignedBoxStyle = null; 
+                this.currentSearchLevel = searchLevel;
+                // מעקב אחרי משרתים שזוהו ידנית (רק במצב זיהוי משרתים)
+                this.identifiedServantsCount = 0; 
+            }
+
+            getWords() {
+                return this.wordsIndices.map(i => globalWordsData[i]);
+            }
+
+            // בודק אם יש מפסיק ברמה הנוכחית
+            getSplitCandidate() {
+                const words = this.getWords();
+                const limit = words.length - 1; 
+
+                for (let i = 0; i < limit; i++) {
+                    let acc = getAccentFromFullWord(words[i].fullWord);
+                    if (acc && acc.type === 'stop' && acc.level === this.currentSearchLevel) {
+                        return { index: i, accent: acc, globalIndex: this.wordsIndices[i] };
+                    }
+                }
+                return null;
+            }
+            
+            // בודק אם יש מפסיקים בכלל (ברמות נמוכות יותר)
+            hasAnyStops() {
+                const words = this.getWords();
+                const limit = words.length - 1; // האחרון הוא תמיד המפסיק של האבא
+                for (let i = 0; i < limit; i++) {
+                    let acc = getAccentFromFullWord(words[i].fullWord);
+                    if (acc && acc.type === 'stop' && acc.level < this.currentSearchLevel) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            split(splitIndexInNode, delimiterAccent) {
+                this.delimiter = delimiterAccent;
+                this.isSolved = true;
+                
+                const globalIndex = this.wordsIndices[splitIndexInNode];
+                globalWordsData[globalIndex].revealedAccent = delimiterAccent.char;
+                globalWordsData[globalIndex].isRevealed = true;
+
+                const rightIndices = this.wordsIndices.slice(0, splitIndexInNode + 1);
+                const leftIndices = this.wordsIndices.slice(splitIndexInNode + 1);
+                
+                let nextLevel = this.currentSearchLevel - 1;
+                if (nextLevel < 1) nextLevel = 1; // לא יורד מתחת ל-1 בחיפוש רגיל
+
+                const rightChild = new VerseNode(rightIndices, nextLevel);
+                const leftChild = new VerseNode(leftIndices, nextLevel);
+                
+                rightChild.assignedBoxStyle = delimiterAccent;
+                
+                this.children = [rightChild, leftChild];
+            }
+        }
+
+        function initGame() {
+            let raw = document.getElementById('verseInput').value.trim();
+            if(!raw) return;
+            document.getElementById('startScreen').style.display = 'none';
+
+            if (raw.includes('\u05C3') && raw.includes(':')) {
+                raw = raw.replace(/:/g, ''); 
+            }
+
+            const rawWords = raw.split(' ');
+            globalWordsData = rawWords.map(w => ({
+                fullWord: w,
+                cleanText: removeAllAccents(w), 
+                revealedAccent: null,
+                isRevealed: false
+            }));
+
+            // חשיפת המפסיק האחרון (סוף פסוק)
+            const lastIdx = globalWordsData.length - 1;
+            const lastAcc = getAccentFromFullWord(globalWordsData[lastIdx].fullWord);
+            if(lastAcc && (lastAcc.level === 4)) {
+                globalWordsData[lastIdx].revealedAccent = lastAcc.char;
+                globalWordsData[lastIdx].isRevealed = true;
+            }
+
+            const indices = globalWordsData.map((_, i) => i);
+            rootNode = new VerseNode(indices, 4);
+
+            gameLoop();
+        }
+
+        function gameLoop() {
+            activeNode = findNextActiveNode(rootNode);
+            
+            if (activeNode) {
+                // לוגיקת קביעת המצב (State) לתור הנוכחי
+                
+                // חוק 1: קיסרים לא שואלים
+                if (activeNode.currentSearchLevel === 4) {
+                    currentState = STATE_SELECT_SPLIT;
+                } 
+                // בדיקה אם נכנסנו למצב משרתים (נקבע ידנית בפונקציית התשובה "לא")
+                else if (currentState !== STATE_ID_SERVANTS) {
+                    // ברירת מחדל לרמות 3,2,1: שואלים
+                    currentState = STATE_ASK_SPLIT;
+                }
+            } else {
+                currentState = null; // נגמר המשחק
+            }
+
+            updateUI();
+        }
+
+        function findNextActiveNode(node) {
+            if (node.isFinalized) return null;
+
+            // אם הצומת כבר מפוצל, חפש בילדים
+            if (node.isSolved) {
+                // סדר סריקה: ימין קודם
+                let rightResult = findNextActiveNode(node.children[0]);
+                if (rightResult) return rightResult;
+                
+                let leftResult = findNextActiveNode(node.children[1]);
+                if (leftResult) return leftResult;
+                
+                // אם שני הילדים סיימו, אז גם הצומת הזה סיים (טכנית הוא כבר solved, אבל finalize זה לנכדים)
+                node.isFinalized = true; 
+                return null;
+            }
+            
+            // צומת עלה (לא מפוצל)
+            // האם סיימנו איתו?
+            // אם הוא מילה אחת - הוא סגור (אלא אם נרצה לזהות טעם גם עליו, כרגע נניח שאוטומטית נחשף בסוף)
+            if (node.wordsIndices.length <= 1) {
+                node.isFinalized = true;
+                // אם נשאר מילה אחת, אפשר לחשוף את הטעם שלה אוטומטית אם טרם נחשף
+                const idx = node.wordsIndices[0];
+                if (!globalWordsData[idx].isRevealed) {
+                    const acc = getAccentFromFullWord(globalWordsData[idx].fullWord);
+                    if (acc) globalWordsData[idx].revealedAccent = acc.char;
+                    globalWordsData[idx].isRevealed = true;
+                }
+                return null; 
+            }
+            
+            // אם יש מילים והוא לא מפוצל ולא finalized -> זה התור שלו
+            return node;
+        }
+
+        function updateUI() {
+            const ws = document.getElementById('workspace');
+            const instr = document.getElementById('instructionText');
+            const panel = document.getElementById('controlPanel');
+            
+            ws.innerHTML = renderNode(rootNode);
+
+            if (!activeNode) {
+                instr.innerText = "כל הכבוד! הפסוק נבנה במלואו.";
+                instr.style.color = "#27ae60";
+                panel.classList.add('hidden');
+                return;
+            }
+
+            const rankName = RANK_TITLES[activeNode.currentSearchLevel] || "מפסיק";
+
+            // ניהול תצוגת הכותרת והכפתורים לפי המצב
+            switch (currentState) {
+                case STATE_ASK_SPLIT:
+                    instr.innerText = `האם הקטע המודגש זקוק לחלוקה (${rankName})?`;
+                    instr.style.color = "#2c3e50";
+                    panel.classList.remove('hidden'); // הראה כפתורי כן/לא
+                    break;
+                    
+                case STATE_SELECT_SPLIT:
+                    instr.innerText = "לחץ על המילה המפסיקה העיקרית בקטע";
+                    instr.style.color = "#d35400";
+                    panel.classList.add('hidden');
+                    break;
+
+                case STATE_ID_SERVANTS:
+                    instr.innerText = "לא צריך לחלק. כעת סמן את סוג המשרת לכל מילה בקטע.";
+                    instr.style.color = "#8e44ad";
+                    panel.classList.add('hidden');
+                    break;
+            }
+        }
+
+        // --- אינטראקציה ---
+
+        // טיפול בכפתורי הכותרת (כן/לא)
+        function handleHeaderAnswer(isYes) {
+            if (currentState !== STATE_ASK_SPLIT) return;
+
+            const realSplit = activeNode.getSplitCandidate();
+
+            if (isYes) {
+                if (realSplit) {
+                    // צדק שיש חלוקה
+                    currentState = STATE_SELECT_SPLIT;
+                    updateUI();
+                } else {
+                    alert("טעות. אין כאן מפסיק מדרגה זו.");
+                }
+            } else {
+                // אמר שאין חלוקה
+                if (!realSplit) {
+                    // צדק שאין חלוקה ברמה הזו
+                    handleNoSplitLogic();
+                } else {
+                    alert("טעות. דווקא יש כאן מפסיק שצריך למצוא.");
+                }
+            }
+        }
+
+        function handleNoSplitLogic() {
+            // המשתמש צדק שאין מפסיק ברמה הנוכחית.
+            // האם יש מפסיקים ברמות נמוכות יותר בקטע הזה?
+            const hasLowerLevelStops = activeNode.hasAnyStops();
+
+            if (hasLowerLevelStops) {
+                // יש מפסיקים זוטרים יותר -> יורדים רמה וממשיכים בסבב הרגיל
+                activeNode.currentSearchLevel--;
+                if (activeNode.currentSearchLevel < 1) activeNode.currentSearchLevel = 1;
+                // חוזרים ללופ, הוא יזהה את הרמה החדשה וישאל שוב
+                gameLoop(); 
+            } else {
+                // אין יותר שום מפסיקים בקטע הזה! (כלומר כולם משרתים עד הסוף)
+                // והמשתמש ביקש: "אם אין צורך בחלוקה ויש מילים -> לבחור את המשרת"
+                currentState = STATE_ID_SERVANTS;
+                updateUI();
+            }
+        }
+
+        // לחיצה על מילה במרחב העבודה
+        function handleWordClick(nodeId, idxInNode) {
+            if (!activeNode || activeNode.id !== nodeId) return;
+            
+            const globalIndex = activeNode.wordsIndices[idxInNode];
+            const wordData = globalWordsData[globalIndex];
+
+            // אם המילה כבר פתורה/גלויה - מתעלמים
+            if (wordData.isRevealed) return;
+
+            if (currentState === STATE_SELECT_SPLIT) {
+                // מצב בחירת מפסיק
+                const candidate = activeNode.getSplitCandidate();
+                if (candidate && idxInNode === candidate.index) {
+                    // פותח מודל לבחירת שם הטעם (וידוא)
+                    pendingWordInfo = { type: 'split', info: candidate };
+                    openAccentModal(candidate.accent.level, 'stop');
+                } else {
+                    alert("זו אינה המילה המפסיקה הנכונה.");
+                }
+            } 
+            else if (currentState === STATE_ID_SERVANTS) {
+                // מצב זיהוי משרתים
+                const realAccent = getAccentFromFullWord(wordData.fullWord);
+                if (realAccent && realAccent.type === 'servant') {
+                    pendingWordInfo = { type: 'servant', globalIndex: globalIndex, realAccent: realAccent, node: activeNode };
+                    // מציג רשימת משרתים לבחירה
+                    openAccentModal(0, 'servant');
+                } else {
+                    // מקרה קצה: אולי יש פה בכל זאת מפסיק שלא זוהה? או שהקוד טעה.
+                    // נניח שהמשתמש לוחץ על מילה שאין לה משרת ברשימה שלנו
+                    alert("לא זוהה משרת מוכר על המילה הזו, או שזו טעות.");
+                }
+            }
+        }
+
+        function openAccentModal(level, type) {
+            const modal = document.getElementById('questionModal');
+            const container = document.getElementById('accentOptions');
+            const title = document.getElementById('accentTitle');
+            
+            container.innerHTML = '';
+            modal.style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+            
+            let relevantAccents = [];
+            
+            if (type === 'stop') {
+                title.innerText = "בחר את המפסיק:";
+                relevantAccents = Object.values(ACCENTS).filter(a => a.level === level && a.type === 'stop');
+            } else {
+                title.innerText = "בחר את המשרת:";
+                // מציג את כל המשרתים
+                relevantAccents = Object.values(ACCENTS).filter(a => a.type === 'servant');
+            }
+
+            // סינון כפילויות תצוגה
+            const unique = [];
+            const seen = new Set();
+            relevantAccents.forEach(a => {
+                if(!seen.has(a.name)) {
+                    seen.add(a.name);
+                    unique.push(a);
+                }
+            });
+
+            unique.forEach(acc => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<span>${acc.name} <span style="font-family: 'SBL Hebrew'; font-size:1.2em;">${acc.char}</span></span> <span class="accent-desc">${acc.desc || ''}</span>`;
+                btn.onclick = () => checkAccentSelection(acc);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAccentSelection(selectedAccent) {
+            if (!pendingWordInfo) return;
+
+            let correctAccentName = "";
+            if (pendingWordInfo.type === 'split') {
+                correctAccentName = pendingWordInfo.info.accent.name;
+            } else {
+                correctAccentName = pendingWordInfo.realAccent.name;
+            }
+
+            if (selectedAccent.name === correctAccentName) {
+                // תשובה נכונה
+                if (pendingWordInfo.type === 'split') {
+                    // ביצוע פיצול
+                    activeNode.split(pendingWordInfo.info.index, pendingWordInfo.info.accent);
+                    // איפוס מצב
+                    currentState = null; // יחושב מחדש בלופ
+                    closeModal();
+                    gameLoop();
+                } else {
+                    // זיהוי משרת
+                    const gIdx = pendingWordInfo.globalIndex;
+                    globalWordsData[gIdx].revealedAccent = selectedAccent.char;
+                    globalWordsData[gIdx].isRevealed = true;
+                    
+                    // בדיקה אם סיימנו את כל המילים בצומת הזה
+                    const node = pendingWordInfo.node;
+                    const unrevealed = node.wordsIndices.filter(i => !globalWordsData[i].isRevealed);
+                    
+                    closeModal();
+                    
+                    if (unrevealed.length === 0) {
+                        // כל המשרתים זוהו!
+                        node.isFinalized = true;
+                        // המילה האחרונה בבלוק היא טכנית המפסיק של ההורה, אבל אנחנו במצב משרתים, 
+                        // אז כנראה סיימנו את הבלוק.
+                        currentState = null; 
+                        gameLoop();
+                    } else {
+                        updateUI(); // מרענן כדי להראות את המשרת שנחשף
+                    }
+                }
+            } else {
+                alert("טעות בזיהוי הטעם.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('questionModal').style.display = 'none';
+            pendingWordInfo = null;
+        }
+
+        function removeAllAccents(str) {
+            return str.replace(/[\u0591-\u05AF\u05BD\u05BF\u05C0\u05C3\u05F3\u05F4:]/g, "");
+        }
+
+        function getAccentFromFullWord(word) {
+            for (let char of word) {
+                if (ACCENTS[char]) return ACCENTS[char];
+            }
+            return null;
+        }
+
+        function renderNode(node) {
+            let innerContent = "";
+
+            if (node.isSolved && node.children.length > 0) {
+                const domainHtml = renderNode(node.children[0]);
+                const remainderHtml = renderNode(node.children[1]);
+
+                innerContent = `
+                    <div class="split-container">
+                        ${domainHtml}
+                        ${remainderHtml}
+                    </div>
+                `;
+            } else {
+                const isActive = (activeNode && node.id === activeNode.id);
+                const className = isActive ? "active-zone" : "neutral-container";
+                
+                // במצב select_split או id_servants המילים לחיצות
+                const isInteractionTime = isActive && (currentState === STATE_SELECT_SPLIT || currentState === STATE_ID_SERVANTS);
+
+                let wordsHtml = node.getWords().map((w, idx) => {
+                    // המילה לחיצה רק אם היא טרם נחשפה, ורק אם אנחנו במצב אינטראקציה מתאים
+                    const isClickable = isInteractionTime && !w.isRevealed;
+                    const clickAttr = isClickable ? `onclick="handleWordClick('${node.id}', ${idx})"` : "";
+                    const cursorClass = isClickable ? "clickable-word" : (w.isRevealed ? "already-solved" : "");
+                    
+                    let displayText = w.cleanText;
+                    if (w.revealedAccent) {
+                        // בדיקה אם זה משרת או מפסיק לצורך צבע
+                        const accObj = Object.values(ACCENTS).find(a => a.char === w.revealedAccent);
+                        const colorClass = (accObj && accObj.type === 'servant') ? "revealed-servant" : "revealed-accent";
+                        displayText += `<span class="${colorClass}">${w.revealedAccent}</span>`;
+                    }
+                    
+                    return `<span class="word-atom ${cursorClass}" ${clickAttr}>${displayText}</span>`;
+                }).join(' ');
+
+                innerContent = `<div class="${className}">${wordsHtml}</div>`;
+            }
+
+            if (node.assignedBoxStyle) {
+                return `
+                    <div class="box ${node.assignedBoxStyle.class}">
+                        <div class="label-tag">${node.assignedBoxStyle.name}</div>
+                        ${innerContent}
+                    </div>
+                `;
+            } else {
+                return innerContent;
+            }
+        }
+
+    </script>
+</body>
+</html>
